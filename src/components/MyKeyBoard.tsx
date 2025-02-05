@@ -1,9 +1,8 @@
 import * as React from "react";
-import { View, Text,StyleSheet  } from "react-native";
+import { View, Text, StyleSheet, Alert } from "react-native";
 import { Styles } from "../styles/GlobalStyles";
 import { myColors } from "../styles/Colors";
 import Button from "./Buttons";
-
 
 export default function MyKeyBoard() {
   const [firstNumber, setFirstNumber] = React.useState("");
@@ -11,8 +10,24 @@ export default function MyKeyBoard() {
   const [operation, setOperation] = React.useState("");
   const [result, setResult] = React.useState<number | null>(null);
 
+  // Nouvelle état pour suivre si une opération est en attente
+  const [operationPending, setOperationPending] = React.useState(false);
+
+  // Fonction utilitaire pour réinitialiser l'état
+  const resetState = () => {
+    setFirstNumber("");
+    setSecondNumber("");
+    setOperation("");
+    setResult(null);
+    setOperationPending(false);
+  };
+
   const handleNumberPress = (buttonValue: string) => {
-    // Allow decimal point only once per number
+    // Réinitialiser si un résultat est affiché
+    if (result !== null) {
+      resetState();
+    }
+
     if (buttonValue === "." && firstNumber.includes(".")) {
       return;
     }
@@ -23,19 +38,28 @@ export default function MyKeyBoard() {
   };
 
   const handleOperationPress = (buttonValue: string) => {
+    // Empêcher les opérations consécutives
+    if (operationPending) {
+      return;
+    }
+
+    // Gérer le cas où aucun nombre n'a été entré
+    if (firstNumber === "") {
+      return;
+    }
+
     setOperation(buttonValue);
     setSecondNumber(firstNumber);
     setFirstNumber("");
+    setResult(null); // Réinitialiser le résultat
+    setOperationPending(true); // Marquer qu'une opération est en attente
   };
 
   const clear = () => {
-    setFirstNumber("");
-    setSecondNumber("");
-    setOperation("");
-    setResult(null);
+    resetState();
   };
 
-  const getResult = () => {
+  const calculateResult = () => {
     if (firstNumber === "" || secondNumber === "") {
       return;
     }
@@ -43,79 +67,75 @@ export default function MyKeyBoard() {
     let num1 = parseFloat(secondNumber);
     let num2 = parseFloat(firstNumber);
 
+    if (isNaN(num1) || isNaN(num2)) {
+      Alert.alert("Erreur", "Entrée invalide");
+      return;
+    }
+
     switch (operation) {
       case "+":
-        clear();
         setResult(num1 + num2);
         break;
 
       case "-":
-        clear();
         setResult(num1 - num2);
         break;
 
       case "*":
-        clear();
         setResult(num1 * num2);
         break;
 
       case "/":
-        clear();
-        if (num2 === 0) {
-          setResult(null); // Handle division by zero
-          alert("Cannot divide by zero");
+        if (num2 == 0) {
+          Alert.alert("Erreur", "Division par zéro impossible");
+          return;
         } else {
           setResult(num1 / num2);
         }
         break;
 
       default:
-        clear();
-        setResult(0);
+        Alert.alert("Erreur", "Opération non reconnue");
         break;
     }
+
+    setFirstNumber("");
+    setSecondNumber("");
+    setOperation("");
+    setOperationPending(false);
   };
 
   const firstNumberDisplay = () => {
-    if (result != null) {
-      return (
-        <Text
-          style={[
-            Styles.screenFirstNumber,
-            {
-              fontSize: result < 99999 ? 70 : 50,
-              color: myColors.result,
-            },
-          ]}
-        >
-          {result.toFixed(2)} 
-        </Text>
-      );
+    let displayValue = firstNumber;
+
+    if (result !== null) {
+      displayValue = result.toFixed(2);
     }
 
-    if (firstNumber && firstNumber.length < 6) {
-      return <Text style={Styles.screenFirstNumber}>{firstNumber}</Text>;
+    if (displayValue === "") {
+      displayValue = "0";
     }
 
-    if (firstNumber === "") {
-      return <Text style={Styles.screenFirstNumber}>{"0"}</Text>;
+    let fontSize = 70;
+    if (displayValue.length > 5 && displayValue.length < 8) {
+      fontSize = 70;
+    } else if (displayValue.length > 7) {
+      fontSize = 50;
     }
 
-    if (firstNumber.length > 5 && firstNumber.length < 8) {
-      return (
-        <Text style={[Styles.screenFirstNumber, { fontSize: 70 }]}>
-          {firstNumber}
-        </Text>
-      );
-    }
-
-    if (firstNumber.length > 7) {
-      return (
-        <Text style={[Styles.screenFirstNumber, { fontSize: 50 }]}>
-          {firstNumber}
-        </Text>
-      );
-    }
+    return (
+      <Text
+        style={[
+          Styles.screenFirstNumber,
+          {
+            fontSize: fontSize,
+            color: myColors.result,
+          },
+        ]}
+      >
+        {displayValue}
+      </Text>
+    );
   };
 
   return (
@@ -129,23 +149,15 @@ export default function MyKeyBoard() {
         }}
       >
         <Text style={Styles.screenSecondNumber}>{secondNumber}</Text>
-        <Text style={{ color: "purple", fontSize: 50, fontWeight: '500' }}>
+        <Text style={{ color: "purple", fontSize: 50, fontWeight: "500" }}>
           {operation}
         </Text>
         {firstNumberDisplay()}
       </View>
 
       <View style={Styles.row}>
-        
-          
-       
         <Button title="AC" isGray onPress={clear} />
-        
-        
-        <Button title="=" isBlue onPress={() => getResult()} />
-       
-           
-        
+        <Button title="=" isBlue onPress={calculateResult} />
       </View>
       <View style={Styles.row}>
         <Button title="7" onPress={() => handleNumberPress("7")} />
@@ -168,9 +180,11 @@ export default function MyKeyBoard() {
       <View style={Styles.row}>
         <Button title="." onPress={() => handleNumberPress(".")} />
         <Button title="0" onPress={() => handleNumberPress("0")} />
-        <Button title="<-" onPress={() => setFirstNumber(firstNumber.slice(0, -1))} />
-       
-             <Button title="/" isBlue onPress={() => handleOperationPress("/")} />
+        <Button
+          title="<-"
+          onPress={() => setFirstNumber(firstNumber.slice(0, -1))}
+        />
+        <Button title="/" isBlue onPress={() => handleOperationPress("/")} />
       </View>
     </View>
   );
