@@ -1,0 +1,3 @@
+for run expo : npm start 
+for run springboot: .\gradlew.bat bootRun
+dont forget dependencies with npm install
